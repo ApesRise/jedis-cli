@@ -117,7 +117,7 @@ public class JedisCli {
      */
     public String sendCommand(String command) throws JedisCliException {
         connect();
-        String[] keys = command.split("\\s+");
+        String[] keys = analyzeCommond(command);
         if (keys.length == 0) {
             throw new JedisCliException("command parse error,command is :"+command);
         }
@@ -179,4 +179,47 @@ public class JedisCli {
         }
     }
 
+    /***
+     * 解析redis命令字符串
+     * 以空格分隔命令，双引号中间的空格忽略分隔
+     * @param command
+     * @return
+     */
+    private String[] analyzeCommond(String command) {
+        List<String> cmds = new ArrayList<String>();
+        if (StringUtils.isEmpty(command)) {
+            return new String[0];
+        }
+
+        boolean inScoup = false;
+        StringBuilder worm = new StringBuilder();
+        for (int index = 0; index < command.length(); ++index) {
+            if ('"' == command.charAt(index)) {
+                if (index > 0 && '\\' == command.charAt(index - 1)) {
+                    worm.setCharAt(index - 1, '"');
+                    continue;
+                }
+                inScoup = !inScoup;
+            } else if (' ' == command.charAt(index)) {
+                if (!inScoup) {
+                    if (!org.apache.commons.lang.StringUtils.isEmpty(worm.toString())) {
+                        cmds.add(worm.toString());
+                    }
+                    worm.setLength(0);
+                } else {
+                    worm.append(command.charAt(index));
+                }
+            } else {
+                worm.append(command.charAt(index));
+            }
+        }
+
+        if(!worm.toString().isEmpty()) {
+            cmds.add(worm.toString());
+        }
+
+        String[] redisM = new String[cmds.size()];
+        redisM = cmds.toArray(redisM);
+        return redisM;
+    }
 }
